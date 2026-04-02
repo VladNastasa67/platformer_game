@@ -1,6 +1,7 @@
 import pygame
 import sys
 
+pygame.mixer.pre_init(44100, -16, 2, 512)
 pygame.init()
 
 WIDTH, HEIGHT = 1000, 600
@@ -24,6 +25,17 @@ GRAY = (110, 110, 110)
 GRAVITY = 0.8
 PLAYER_SPEED = 6
 JUMP_POWER = -16
+
+
+jump_sound=pygame.mixer.Sound("sounds/jump.wav")
+coin_sound=pygame.mixer.Sound("sounds/coin.wav")
+gameover_sound=pygame.mixer.Sound("sounds/gameover.wav")
+win_sound=pygame.mixer.Sound("sounds/win.wav")
+
+jump_sound.set_volume(0.1)
+coin_sound.set_volume(0.3)
+gameover_sound.set_volume(0.2)
+win_sound.set_volume(0.2)
 
 class Platform:
     def __init__(self, x, y, w, h):
@@ -70,6 +82,7 @@ class Player:
         self.score = 0
         self.alive = True
         self.won = False
+        self.gameover_sound_played = False
 
     def reset_position(self):
         self.rect.x = self.start_x
@@ -80,6 +93,7 @@ class Player:
     def move(self, platforms):
         keys = pygame.key.get_pressed()
         self.vel_x = 0
+        
 
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.vel_x = -PLAYER_SPEED
@@ -88,6 +102,7 @@ class Player:
         if (keys[pygame.K_UP] or keys[pygame.K_w] or keys[pygame.K_SPACE]) and self.on_ground:
             self.vel_y = JUMP_POWER
             self.on_ground = False
+            jump_sound.play()
 
         self.rect.x += self.vel_x
         for platform in platforms:
@@ -113,6 +128,9 @@ class Player:
 
         if self.rect.top > HEIGHT:
             self.alive = False
+            if not self.gameover_sound_played:
+                gameover_sound.play()
+                self.gameover_sound_played = True
 
     def draw(self):
         pygame.draw.rect(screen, BLUE, self.rect)
@@ -171,15 +189,19 @@ while running:
             if not coin.collected and player.rect.colliderect(coin.rect):
                 coin.collected = True
                 player.score += 1
+                coin_sound.play()
 
         for enemy in enemies:
             enemy.update()
             if player.rect.colliderect(enemy.rect):
                 player.alive = False
+                gameover_sound.play()
+
 
         if player.rect.colliderect(goal):
             if all(coin.collected for coin in coins):
                 player.won = True
+                win_sound.play()
 
     screen.fill(SKY)
 
