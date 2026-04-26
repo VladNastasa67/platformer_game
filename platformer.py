@@ -26,11 +26,10 @@ GRAVITY = 0.8
 PLAYER_SPEED = 6
 JUMP_POWER = -16
 
-
-jump_sound=pygame.mixer.Sound("sounds/jump.wav")
-coin_sound=pygame.mixer.Sound("sounds/coin.wav")
-gameover_sound=pygame.mixer.Sound("sounds/gameover.wav")
-win_sound=pygame.mixer.Sound("sounds/win.wav")
+jump_sound = pygame.mixer.Sound("sounds/jump.wav")
+coin_sound = pygame.mixer.Sound("sounds/coin.wav")
+gameover_sound = pygame.mixer.Sound("sounds/gameover.wav")
+win_sound = pygame.mixer.Sound("sounds/win.wav")
 
 jump_sound.set_volume(0.1)
 coin_sound.set_volume(0.3)
@@ -83,6 +82,7 @@ class Player:
         self.alive = True
         self.won = False
         self.gameover_sound_played = False
+        self.win_sound_played = False
 
     def reset_position(self):
         self.rect.x = self.start_x
@@ -93,7 +93,6 @@ class Player:
     def move(self, platforms):
         keys = pygame.key.get_pressed()
         self.vel_x = 0
-        
 
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.vel_x = -PLAYER_SPEED
@@ -136,37 +135,78 @@ class Player:
         pygame.draw.rect(screen, BLUE, self.rect)
         pygame.draw.rect(screen, BLACK, self.rect, 2)
 
-platforms = [
-    Platform(0, 560, 1000, 40),
-    Platform(120, 470, 140, 20),
-    Platform(320, 400, 160, 20),
-    Platform(560, 340, 160, 20),
-    Platform(780, 270, 140, 20),
-    Platform(650, 470, 120, 20),
-    Platform(420, 250, 100, 20),
-]
+def load_level(level):
+    if level == 1:
+        platforms = [
+            Platform(0, 560, 1000, 40),
+            Platform(120, 470, 140, 20),
+            Platform(320, 400, 160, 20),
+            Platform(560, 340, 160, 20),
+            Platform(780, 270, 140, 20),
+            Platform(650, 470, 120, 20),
+            Platform(420, 250, 100, 20),
+        ]
 
-coins = [
-    Coin(170, 435),
-    Coin(385, 365),
-    Coin(620, 305),
-    Coin(830, 235),
-    Coin(455, 215),
-]
+        coins = [
+            Coin(170, 435),
+            Coin(385, 365),
+            Coin(620, 305),
+            Coin(830, 235),
+            Coin(455, 215),
+        ]
 
-enemies = [
-    Enemy(350, 370, 40, 30, 320, 480),
-    Enemy(580, 530, 40, 30, 540, 900),
-]
+        enemies = [
+            Enemy(350, 370, 40, 30, 320, 480),
+            Enemy(580, 530, 40, 30, 540, 900),
+        ]
 
-goal = pygame.Rect(900, 210, 30, 60)
+        goal = pygame.Rect(900, 210, 30, 60)
+        start_pos = (50, 500)
 
-player = Player(50, 500)
+    elif level == 2:
+        platforms = [
+            Platform(0, 560, 1000, 40),
+            Platform(80, 500, 160, 20),
+            Platform(240, 450, 160, 20),
+            Platform(400, 390, 160, 20),
+            Platform(580, 330, 160, 20),
+            Platform(760, 270, 160, 20),
+            Platform(600, 210, 140, 20),
+            Platform(420, 170, 140, 20),
+            Platform(220, 140, 140, 20),
+        ]
+
+        coins = [
+            Coin(110, 465),
+            Coin(270, 415),
+            Coin(450, 355),
+            Coin(620, 295),
+            Coin(800, 235),
+            Coin(630, 175),
+            Coin(250, 105),
+        ]
+
+        enemies = [
+            Enemy(250, 420, 40, 30, 240, 400),
+            Enemy(590, 300, 40, 30, 580, 750),
+            Enemy(100, 530, 40, 30, 50, 250),
+        ]
+
+        goal = pygame.Rect(240, 80, 30, 60)
+        start_pos = (40, 500)
+
+    return platforms, coins, enemies, goal, start_pos
 
 def draw_text_center(text, font_obj, color, y):
     img = font_obj.render(text, True, color)
     rect = img.get_rect(center=(WIDTH // 2, y))
     screen.blit(img, rect)
+
+nivel_curent = 1
+nivel_maxim = 2
+
+platforms, coins, enemies, goal, start_pos = load_level(nivel_curent)
+player = Player(start_pos[0], start_pos[1])
 
 running = True
 while running:
@@ -178,9 +218,9 @@ while running:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_r and (not player.alive or player.won):
-                player = Player(50, 500)
-                for coin in coins:
-                    coin.collected = False
+                #nivel_curent = 1
+                platforms, coins, enemies, goal, start_pos = load_level(nivel_curent)
+                player = Player(start_pos[0], start_pos[1])
 
     if player.alive and not player.won:
         player.move(platforms)
@@ -195,13 +235,23 @@ while running:
             enemy.update()
             if player.rect.colliderect(enemy.rect):
                 player.alive = False
-                gameover_sound.play()
-
+                if not player.gameover_sound_played:
+                    gameover_sound.play()
+                    player.gameover_sound_played = True
 
         if player.rect.colliderect(goal):
             if all(coin.collected for coin in coins):
-                player.won = True
-                win_sound.play()
+                if nivel_curent < nivel_maxim:
+                    scor_salvat = player.score
+                    nivel_curent += 1
+                    platforms, coins, enemies, goal, start_pos = load_level(nivel_curent)
+                    player = Player(start_pos[0], start_pos[1])
+                    player.score = scor_salvat
+                else:
+                    player.won = True
+                    if not player.win_sound_played:
+                        win_sound.play()
+                        player.win_sound_played = True
 
     screen.fill(SKY)
 
@@ -219,22 +269,25 @@ while running:
 
     player.draw()
 
-    score_text = font.render(f"Scor: {player.score}/{len(coins)}", True, BLACK)
-    screen.blit(score_text, (20, 20))
+    level_text = font.render(f"Nivel: {nivel_curent}/{nivel_maxim}", True, BLACK)
+    screen.blit(level_text, (20, 20))
+
+    score_text = font.render(f"Scor: {player.score}", True, BLACK)
+    screen.blit(score_text, (20, 55))
 
     info_text = font.render("Miscare: A/D sau sageti | Saritura: SPACE/W/UP", True, BLACK)
-    screen.blit(info_text, (20, 55))
+    screen.blit(info_text, (20, 90))
 
     if not player.alive:
         draw_text_center("GAME OVER", big_font, RED, HEIGHT // 2 - 20)
         draw_text_center("Apasa R pentru restart", font, BLACK, HEIGHT // 2 + 40)
 
     if player.won:
-        draw_text_center("AI CASTIGAT!", big_font, GREEN, HEIGHT // 2 - 20)
+        draw_text_center("AI CASTIGAT TOT JOCUL!", big_font, GREEN, HEIGHT // 2 - 20)
         draw_text_center("Apasa R pentru restart", font, BLACK, HEIGHT // 2 + 40)
 
     if not all(coin.collected for coin in coins) and player.rect.colliderect(goal):
-        draw_text_center("Colecteaza toate monedele mai intai!", font, RED, 120)
+        draw_text_center("Colecteaza toate monedele mai intai!", font, RED, 140)
 
     pygame.display.flip()
 
