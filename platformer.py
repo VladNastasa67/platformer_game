@@ -358,11 +358,41 @@ def draw_text_center(text, font_obj, color, y):
     img = font_obj.render(text, True, color)
     rect = img.get_rect(center=(WIDTH // 2, y))
     screen.blit(img, rect)
+    
+def draw_heart(x, y):
+    pygame.draw.circle(screen, RED, (x, y), 8)
+    pygame.draw.circle(screen, RED, (x + 10, y), 8)
+    pygame.draw.polygon(screen, RED, [
+        (x - 2, y),
+        (x + 12, y),
+        (x + 5, y + 12)
+    ])
+
+
+def draw_broken_heart(x, y):
+    # inimă gri + "crăpătură"
+    pygame.draw.circle(screen, GRAY, (x, y), 8)
+    pygame.draw.circle(screen, GRAY, (x + 10, y), 8)
+    pygame.draw.polygon(screen, GRAY, [
+        (x - 2, y),
+        (x + 12, y),
+        (x + 5, y + 12)
+    ])
+
+    # linie zig-zag (crăpătură)
+    pygame.draw.line(screen, RED, (x + 5, y - 2), (x + 3, y + 4), 2)
+    pygame.draw.line(screen, RED, (x + 3, y + 4), (x + 7, y + 8), 2)
 
 
 def start_level(level):
+    global lives
+
     platforms, coins, enemies, goal, start_pos = load_level(level)
     player = Player(start_pos[0], start_pos[1])
+
+    if game_mode == "easy":
+        lives = 3
+
     return platforms, coins, enemies, goal, start_pos, player
 
 
@@ -443,6 +473,8 @@ nivel_curent = 1
 nivel_maxim = 5
 nivel_bonus = 6
 game_state = "menu"
+game_mode="noraml"
+lives=2
 
 unlocked_levels, level_scores, best_bonus_time = load_save()
 
@@ -464,6 +496,14 @@ while running:
         if event.type == pygame.KEYDOWN:
             if game_state == "menu":
                 selected_level = None
+                
+                if event.key == pygame.K_u:
+                    game_mode = "easy"
+                    mesaj_meniu = "Mod EASY selectat - 3 vieti"
+
+                elif event.key == pygame.K_n:
+                    game_mode = "normal"
+                    mesaj_meniu = "Mod NORMAL selectat"
 
                 if event.key == pygame.K_1:
                     selected_level = 1
@@ -514,8 +554,8 @@ while running:
 
         draw_text_center("2D PLATFORMER", big_font, BLACK, 45)
         draw_text_center("Selecteaza nivelul:", font, BLACK, 105)
-
-        y = 150
+        draw_text_center("Apasa U pentru EASY (2 vieti) | Apasa N pentru NORMAL", font, GREEN, 130)
+        y = 175
 
         for i in range(1, nivel_maxim + 1):
             last_score = level_scores[i][0]
@@ -559,11 +599,27 @@ while running:
             enemy.update()
 
             if player.rect.colliderect(enemy.rect):
-                player.alive = False
+                if game_mode == "easy":
+                    lives -= 1
 
-                if not player.gameover_sound_played:
-                    gameover_sound.play()
-                    player.gameover_sound_played = True
+                    if lives > 0:
+                        player.rect.x = start_pos[0]
+                        player.rect.y = start_pos[1]
+                        player.vel_x = 0
+                        player.vel_y = 0
+                    else:
+                        player.alive = False
+
+                        if not player.gameover_sound_played:
+                            gameover_sound.play()
+                            player.gameover_sound_played = True
+
+                else:
+                    player.alive = False
+
+                    if not player.gameover_sound_played:
+                        gameover_sound.play()
+                        player.gameover_sound_played = True
 
         if nivel_curent == nivel_bonus:
             if all(coin.collected for coin in coins):
@@ -629,6 +685,18 @@ while running:
 
     score_text = font.render(f"Puncte nivel: {player.score}", True, BLACK)
     screen.blit(score_text, (20, 55))
+    
+    mode_text = font.render(f"Mod: {game_mode.upper()}", True, BLACK)
+    screen.blit(mode_text, (20, 90))
+
+    if game_mode == "easy":
+        max_lives = 3  # sau 2 dacă vrei
+
+        for i in range(max_lives):
+            if i < lives:
+                draw_heart(20 + i * 30, 130)
+            else:
+                draw_broken_heart(20 + i * 30, 130)
 
     if nivel_curent == nivel_bonus and not player.won:
         timp_curent = (pygame.time.get_ticks() - bonus_start_time) / 1000
@@ -636,7 +704,7 @@ while running:
         screen.blit(timer_text, (20, 90))
     else:
         info_text = font.render("A/D sau sageti = miscare | SPACE/W/UP = saritura | ESC = meniu", True, BLACK)
-        screen.blit(info_text, (20, 90))
+        screen.blit(info_text, (20, 160))
 
     if not player.alive:
         draw_text_center("GAME OVER", big_font, RED, HEIGHT // 2 - 20)
